@@ -4,7 +4,6 @@
 #include <iostream>
 using namespace std;
 
-// Nó da LDE
 template <typename T>
 class Node {
 public:
@@ -15,10 +14,8 @@ public:
     Node(T data) : data(data), prev(nullptr), next(nullptr) {}
 };
 
-// Lista Duplamente Encadeada
 template <typename T>
 class LDE {
-private:
     Node<T>* head;
     Node<T>* tail;
     int size;
@@ -42,10 +39,32 @@ public:
         size++;
     }
 
+    void removeNode(Node<T>* targetNode) {
+        if (!targetNode || !head) return;
+
+        if (targetNode == head) {
+            head = head->next;
+            if (head) head->prev = nullptr;
+            else tail = nullptr;
+        } else if (targetNode == tail) {
+            tail = tail->prev;
+            if (tail) tail->next = nullptr;
+            else head = nullptr;
+        } else {
+            targetNode->prev->next = targetNode->next;
+            targetNode->next->prev = targetNode->prev;
+        }
+
+        delete targetNode->data;
+        delete targetNode;
+        size--;
+    }
+
     void clear() {
         Node<T>* current = head;
         while (current) {
             Node<T>* next = current->next;
+            delete current->data;
             delete current;
             current = next;
         }
@@ -53,20 +72,15 @@ public:
         size = 0;
     }
 
-    // Busca
     Node<T>* search(T target) {
         Node<T>* current = head;
         while (current) {
-            if (current->data == target) {
-                return current;
-            }
+            if (current->data == target) return current;
             current = current->next;
         }
         return nullptr;
     }
 
-    // Ordenação (Bubble Sort para demonstração simples com LDE)
-    // O(n^2)
     void sort(bool (*compare)(T, T)) {
         if (!head || !head->next) return;
         
@@ -80,7 +94,6 @@ public:
             
             while (ptr1->next != lptr) {
                 if (compare(ptr1->data, ptr1->next->data)) {
-                    // Troca os dados (mais fácil do que trocar os ponteiros do nó aqui)
                     T temp = ptr1->data;
                     ptr1->data = ptr1->next->data;
                     ptr1->next->data = temp;
