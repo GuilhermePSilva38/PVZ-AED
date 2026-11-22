@@ -1,5 +1,6 @@
 #include "Game.h"
 #include <iostream>
+#include <cstdlib>
 using namespace std;
 
 Game::Game() : suns(100) {
@@ -8,6 +9,9 @@ Game::Game() : suns(100) {
             board[i][j] = nullptr;
         }
     }
+    initAlmanaque();
+    fillZombieWave(8);
+    actionHistory.push("Jogo iniciado com 100 sois.");
 }
 
 Game::~Game() {
@@ -17,6 +21,27 @@ Game::~Game() {
         }
     }
     zombies.clear();
+}
+
+void Game::initAlmanaque() {
+    almanaque.insert("Sunflower", "Custo: $50 | HP: 100 | Gera +50 sois por turno.");
+    almanaque.insert("Peashooter", "Custo: $100 | HP: 100 | Atira 1 ervilha (20 de dano).");
+    almanaque.insert("Repeater", "Custo: $200 | HP: 100 | Atira 2 ervilhas (40 de dano).");
+    almanaque.insert("Fire Peashooter", "Custo: $175 | HP: 100 | Atira ervilha de fogo (45 de dano).");
+    almanaque.insert("Potato Mine", "Custo: $25 | HP: 50 | Explode causando 500 de dano ao contato.");
+    almanaque.insert("Bonk Choy", "Custo: $150 | HP: 150 | Soca zumbis proximos (35 de dano).");
+    almanaque.insert("WallNut", "Custo: $50 | HP: 400 | Barreira defensiva de alta resistencia.");
+}
+
+void Game::fillZombieWave(int count) {
+    for (int i = 0; i < count; i++) {
+        int linha = rand() % ROWS;
+        int tipo = rand() % 4;
+        if (tipo == 0) zombieWave.enqueue(new BasicZombie(linha, 8));
+        else if (tipo == 1) zombieWave.enqueue(new ConeheadZombie(linha, 8));
+        else if (tipo == 2) zombieWave.enqueue(new BucketheadZombie(linha, 8));
+        else zombieWave.enqueue(new NewspaperZombie(linha, 8));
+    }
 }
 
 int Game::getSuns() const { return suns; }
@@ -35,7 +60,9 @@ void Game::placePlant(Plant* plant, int row, int col) {
         if (board[row][col] == nullptr) {
             if (spendSuns(plant->getCost())) {
                 board[row][col] = plant;
-                cout << "Planta " << plant->getName() << " colocada em (" << row << "," << col << ").\n";
+                string msg = "Plantou " + plant->getName() + " em (" + to_string(row + 1) + "," + to_string(col + 1) + ")";
+                actionHistory.push(msg);
+                cout << msg << ".\n";
             } else {
                 cout << "Sois insuficientes! Voce precisa de " << plant->getCost() << " sois.\n";
                 delete plant;
@@ -44,19 +71,50 @@ void Game::placePlant(Plant* plant, int row, int col) {
             cout << "Posicao ja esta ocupada!\n";
             delete plant;
         }
+    } else {
+        cout << "Posicao invalida! Use linhas de 1 a 5 e colunas de 1 a 9.\n";
+        delete plant;
     }
 }
 
-void Game::spawnZombie(Zombie* zombie) {
-    zombies.insert(zombie);
-    cout << "ATENCAO: " << zombie->getName() << " apareceu na linha " << zombie->getX() << "!\n";
+void Game::spawnNextZombieFromQueue() {
+    if (zombieWave.isEmpty()) {
+        fillZombieWave(5);
+    }
+    Zombie* nextZ = zombieWave.dequeue();
+    if (nextZ) {
+        zombies.insert(nextZ);
+        string msg = nextZ->getName() + " saiu da Fila e entrou na Linha " + to_string(nextZ->getX() + 1);
+        actionHistory.push(msg);
+        cout << "ATENCAO: " << msg << "!\n";
+    }
 }
 
-void Game::displayBoard() {
-    cout << "\n============================== TABULEIRO (SOIS: " << suns << ") ==============================\n";
-    cout << "     0     1     2     3     4     5     6     7     8  (Colunas)\n";
+void Game::displayBoard(int turno) {
+    string proxZumbi = zombieWave.isEmpty() ? "Nenhum" : zombieWave.front()->getName();
+    string infoFila = "  |  HORDA (" + to_string(zombieWave.size()) + "): " + proxZumbi;
+    while (infoFila.length() < 68) {
+        infoFila += " ";
+    }
+    infoFila += "|";
+
+    string menuLateral[7] = {
+        "  |  PLANTAS: [1]Girassol $50   [2]Ervilha $100   [3]Repeater $200 |",
+        "  |           [4]Fogo $175      [5]Mina $25       [6]Boxeador $150 |",
+        "  |           [7]Nos $50        [8]Passar Turno                    |",
+        "  |  AED:     [9]Buscar LDE    [10]BubbleSort    [11]InsertionSort |",
+        "  |           [12]Pilha Log    [13]Hash Almanaque [14]Sair         |",
+        infoFila,
+        "  +----------------------------------------------------------------+"
+    };
+
+    cout << "================================================================================================================================\n";
+    cout << "  PLANTS VS ZOMBIES 2 - AED C++   |   TURNO: " << turno << "   |   SOIS: $" << suns << "   |   ZUMBIS NO MAPA (LDE): " << zombies.getSize() << "\n";
+    cout << "================================================================================================================================\n";
+    cout << "     1     2     3     4     5     6     7     8     9   " << menuLateral[0] << "\n";
+
     for (int i = 0; i < ROWS; i++) {
-        cout << "L" << i << " ";
+        cout << "L" << i + 1 << " ";
         for (int j = 0; j < COLS; j++) {
             Plant* p = board[i][j];
             Zombie* z = nullptr;
@@ -101,12 +159,12 @@ void Game::displayBoard() {
                 cout << "[   ] ";
             }
         }
-        cout << "\n";
+        cout << menuLateral[i + 1] << "\n";
     }
-    cout << "=================================================================================\n";
-    cout << "Plantas: [G] Girassol | [E] Ervilha | [R] Repetidora | [F] Fogo | [M] Mina Batata\n";
-    cout << "Zumbis:  [Z] Basico   | [C] Conehead| [K] Balde de Ferro | [J] Jornal\n";
-    cout << "=================================================================================\n";
+
+    cout << "=========================================================" << menuLateral[6] << "\n";
+    cout << "LEGENDA -> Plantas: [G]Girassol [E]Ervilha [R]Repeater [F]Fogo [M]Mina [B]Boxeador [N]Nos | Zumbis: [Z]Basico [C]Cone [K]Balde [J]Jornal\n";
+    cout << "================================================================================================================================\n";
 }
 
 bool Game::updateEntities() {
@@ -161,6 +219,18 @@ bool Game::updateEntities() {
                         target = target->next;
                     }
                 }
+
+                if (p->getName() == "Repolho Boxeador") {
+                    Node<Zombie*>* target = zombies.getHead();
+                    while (target) {
+                        if (target->data->getX() == i && (target->data->getY() == j || target->data->getY() == j + 1)) {
+                            target->data->setHp(target->data->getHp() - 35);
+                            cout << "   -> Repolho Boxeador socou " << target->data->getName() << "! HP restante: " << target->data->getHp() << "\n";
+                            break;
+                        }
+                        target = target->next;
+                    }
+                }
             }
         }
     }
@@ -171,7 +241,9 @@ bool Game::updateEntities() {
         Zombie* z = currZ->data;
 
         if (z->getHp() <= 0) {
-            cout << "Zumbi " << z->getName() << " foi DERROTADO!\n";
+            string msg = z->getName() + " foi DERROTADO!";
+            cout << msg << "\n";
+            actionHistory.push(msg);
             zombies.removeNode(currZ);
             currZ = nextZ;
             continue;
@@ -185,6 +257,7 @@ bool Game::updateEntities() {
 
             if (p->getName() == "Potato Mine") {
                 cout << "\n*** BOOM! A Mina Batata EXPLODIU no " << z->getName() << "! ***\n";
+                actionHistory.push("Mina Batata explodiu " + z->getName());
                 z->setHp(z->getHp() - 500);
                 delete board[zX][zY];
                 board[zX][zY] = nullptr;
@@ -193,14 +266,16 @@ bool Game::updateEntities() {
                 cout << z->getName() << " esta mordendo a planta " << p->getName() << "! HP da planta: " << p->getHp() << "\n";
 
                 if (p->getHp() <= 0) {
-                    cout << "Planta " << p->getName() << " foi DESTRUIDA pelo zumbi!\n";
+                    string msg = "Planta " + p->getName() + " destruida por " + z->getName();
+                    cout << msg << "!\n";
+                    actionHistory.push(msg);
                     delete board[zX][zY];
                     board[zX][zY] = nullptr;
                 }
             }
         } else {
             z->setPosition(zX, zY - 1);
-            cout << z->getName() << " avancou para a coluna " << z->getY() << ".\n";
+            cout << z->getName() << " avancou para a coluna " << z->getY() + 1 << ".\n";
 
             if (z->getY() < 0) {
                 cout << "\n!!! O ZUMBI ENTROU NA SUA CASA !!! GAME OVER !!!\n";
@@ -213,16 +288,27 @@ bool Game::updateEntities() {
 }
 
 bool compareZombieHp(Zombie* z1, Zombie* z2) {
-    return z1->getHp() > z2->getHp();
+    return z1->getHp() < z2->getHp();
 }
 
-void Game::sortZombiesByHp() {
-    cout << "Ordenando zumbis por HP...\n";
-    zombies.sort(compareZombieHp);
+void Game::sortZombiesBubble() {
+    cout << "\n[BubbleSort] Ordenando zumbis por HP (Maior -> Menor)...\n";
+    zombies.bubbleSort(compareZombieHp);
     
     Node<Zombie*>* current = zombies.getHead();
     while (current) {
-        cout << "Zumbi: " << current->data->getName() << " - HP: " << current->data->getHp() << "\n";
+        cout << "  Zumbi: " << current->data->getName() << " - HP: " << current->data->getHp() << "\n";
+        current = current->next;
+    }
+}
+
+void Game::sortZombiesInsertion() {
+    cout << "\n[InsertionSort] Ordenando zumbis por HP (Maior -> Menor)...\n";
+    zombies.insertionSort(compareZombieHp);
+    
+    Node<Zombie*>* current = zombies.getHead();
+    while (current) {
+        cout << "  Zumbi: " << current->data->getName() << " - HP: " << current->data->getHp() << "\n";
         current = current->next;
     }
 }
@@ -231,11 +317,21 @@ Zombie* Game::searchZombieByName(string name) {
     Node<Zombie*>* current = zombies.getHead();
     while (current) {
         if (current->data->getName() == name) {
-            cout << "Zumbi " << name << " encontrado no mapa!\n";
+            cout << "Zumbi " << name << " encontrado na Linha " << current->data->getX() + 1 << ", Coluna " << current->data->getY() + 1 << "!\n";
             return current->data;
         }
         current = current->next;
     }
-    cout << "Zumbi " << name << " nao encontrado.\n";
+    cout << "Zumbi " << name << " nao encontrado na LDE.\n";
     return nullptr;
+}
+
+void Game::showHistory() {
+    cout << "\n=== PILHA DE HISTORICO (Ultimas acoes - LIFO) ===\n";
+    actionHistory.displayTop(6);
+}
+
+void Game::consultAlmanaque(string plantName) {
+    cout << "\n=== TABELA HASH - ALMANAQUE ===\n";
+    cout << plantName << " -> " << almanaque.search(plantName) << "\n";
 }

@@ -81,7 +81,7 @@ public:
         return nullptr;
     }
 
-    void sort(bool (*compare)(T, T)) {
+    void bubbleSort(bool (*compare)(T, T)) {
         if (!head || !head->next) return;
         
         bool swapped;
@@ -103,6 +103,26 @@ public:
             }
             lptr = ptr1;
         } while (swapped);
+    }
+
+    void insertionSort(bool (*compare)(T, T)) {
+        if (!head || !head->next) return;
+
+        Node<T>* current = head->next;
+        while (current) {
+            T key = current->data;
+            Node<T>* prevNode = current->prev;
+
+            while (prevNode && compare(prevNode->data, key)) {
+                prevNode->next->data = prevNode->data;
+                prevNode = prevNode->prev;
+            }
+
+            if (!prevNode) head->data = key;
+            else prevNode->next->data = key;
+
+            current = current->next;
+        }
     }
 
     Node<T>* getHead() const { return head; }

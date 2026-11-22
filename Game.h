@@ -4,6 +4,7 @@
 #include "Plant.h"
 #include "Zombie.h"
 #include "LDE.h"
+#include "EstruturasAED.h"
 #include <string>
 using namespace std;
 
@@ -13,7 +14,13 @@ class Game {
 
     Plant* board[ROWS][COLS];
     LDE<Zombie*> zombies;
+    Fila<Zombie*> zombieWave;
+    Pilha<string> actionHistory;
+    TabelaHash almanaque;
     int suns;
+
+    void initAlmanaque();
+    void fillZombieWave(int count);
 
 public:
     Game();
@@ -24,13 +31,16 @@ public:
     bool spendSuns(int amount);
 
     void placePlant(Plant* plant, int row, int col);
-    void spawnZombie(Zombie* zombie);
+    void spawnNextZombieFromQueue();
     
-    void displayBoard();
+    void displayBoard(int turno);
     bool updateEntities();
 
-    void sortZombiesByHp();
+    void sortZombiesBubble();
+    void sortZombiesInsertion();
     Zombie* searchZombieByName(string name);
+    void showHistory();
+    void consultAlmanaque(string plantName);
 };
 
 #endif
